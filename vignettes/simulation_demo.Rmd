@@ -16,11 +16,9 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(cnvseqTV)
-```
-
-```{r}
 library(readr)
 library(magrittr)
+library(tibble)
 ```
 
 # CNVseq-TV Demo
@@ -55,7 +53,7 @@ similar in excel, rather than hard-code this into R, but we do it like this to
 avoid having another file sitting around and for clarity.
 
 ```{r}
-comparisons = tibble::tribble(
+comparisons = tribble(
     ~comparison, ~sample, ~testctrl,
     "deleted_vs_control",  "deleted", "test",
     "deleted_vs_control",  "control", "control",

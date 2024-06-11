@@ -4,10 +4,19 @@
 \alias{calculate_cnvs}
 \title{Calculate CNVs}
 \usage{
-calculate_cnvs(count_table)
+calculate_cnvs(count_table, comparisons)
 }
 \arguments{
 \item{count_table}{A table of windowed counts read directly from the output of samtools depth. See worked example.}
+
+\item{comparisons}{A table of comparisons, must have columns
+\verb{"comparison", "sample", "ctrltest"}. Comparison is a
+name for this comparison, sample is which sample name
+(must match bam name in \code{count_table}), and ctrltest is
+a string either \code{"control"} or \code{"test"}, denoting if
+this row describes a test or control sample. Therefore,
+there should be two rows for each comparison, one for
+the test and one for the control.}
 }
 \value{
 A table of windows in which the coverage between the control and test sample(s) are compared.
