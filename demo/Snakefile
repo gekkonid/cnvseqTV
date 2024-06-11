@@ -1,0 +1,105 @@
+from Bio import SeqIO, Seq
+
+config["nreads"] = 2e6
+config["refs"] = {
+    "control": "input/Baxijiao.chr1.fa",
+    "deleted": "tmp/ref_deleted.fa",
+    "inverted": "tmp/ref_inverted.fa",
+}
+
+deletions= [
+    ("chr01", 31000, 32000),
+    ("chr01", 310000, 320000),
+    ("chr01", 3100000, 3200000),
+    ("chr01", 1000000, 2000000),
+]
+
+inversions = [
+    ("chr01", 1000000, 2000000),
+]
+
+def delete(ref, ranges):
+    for chrom, start, end in reversed(sorted(ranges)):
+        ref[chrom] = ref[chrom][:start] + ref[chrom][end:]
+    return sorted(ref.items())
+
+def inversion(ref, ranges):
+    for chrom, start, end in reversed(sorted(ranges)):
+        ref[chrom] = ref[chrom][:start] + Seq.reverse_complement(ref[chrom][start:end]) + ref[chrom][end:]
+    return sorted(ref.items())
+
+
+rule all:
+    input:
+        expand("tmp/bam/{sample}.bam", sample=config["refs"])
+
+
+rule deletedref:
+    input:
+        config["refs"]["control"],
+    output:
+        config["refs"]["deleted"],
+    run:
+        ref = {s.name: s.seq for s in SeqIO.parse(input[0], "fasta")}
+        with open(output[0], "w") as fh:
+            for ctg, seq in delete(ref, deletions):
+                print(f">{ctg}", file=fh)
+                print(str(seq), file=fh)
+
+rule invertedref:
+    input:
+        config["refs"]["control"],
+    output:
+        config["refs"]["inverted"],
+    run:
+        ref = {s.name: s.seq for s in SeqIO.parse(input[0], "fasta")}
+        with open(output[0], "w") as fh:
+            for ctg, seq in inversion(ref, deletions):
+                print(f">{ctg}", file=fh)
+                print(str(seq), file=fh)
+
+rule reads:
+    input:
+        lambda wc: config["refs"][wc.sample]
+    output:
+        r1="tmp/reads/{sample}.1.fq",
+        r2="tmp/reads/{sample}.2.fq",
+    log:
+        "tmp/reads/{sample}.log",
+    params:
+        nreads=int(float(config["nreads"]))
+    shell:
+        "wgsim -1 150 -2 150 -R 0 -N {params.nreads} {input} {output.r1} {output.r2} &> {log}"
+
+
+rule bwaidx:
+    input:
+        ref=lambda wc: config["refs"]["control"],
+    output:
+        "tmp/ref_bwa.done"
+    shell:
+        "bwa index -p tmp/ref_bwa {input.ref} && touch {output}"
+
+rule bam:
+    input:
+        ref=lambda wc: config["refs"]["control"],
+        r1="tmp/reads/{sample}.1.fq",
+        r2="tmp/reads/{sample}.2.fq",
+        idx="tmp/ref_bwa.done"
+    output:
+        bam="tmp/bam/{sample}.bam",
+    threads: 4
+    log:
+        "tmp/bam/{sample}.log",
+    shell:
+        "(bwa mem"
+        "   -t {threads}"
+        "   tmp/ref_bwa"
+        "   {input.r1}"
+        "   {input.r2}"
+        " | samtools sort"
+        "   -@ {threads}"
+        "   -o {output.bam}"
+        " && samtools index {output.bam}"
+        ") &> {log}"
+

@@ -1,0 +1,96 @@
+---
+jupyter:
+  jupytext:
+    formats: ipynb,Rmd
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.16.0
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+```{r}
+library(readr)
+library(magrittr)
+# You should load cnvseqTV with library() like this, but this tutorial doesn't for simplicity
+#library(cnvseqTV)
+# Instead, just here, we source the code rather than call library. Don't do this :)
+source("../R/cnvseqtv.R")
+```
+
+# CNVseq-TV Demo
+
+In this demo, we make a few deletions in chr1 of the banana genome, and then generate reads and bams from these, mapped back to the original banana genome.
+
+
+First, we need to run two commands. First, we use bedtools to generate a list of genome windows that should be analysed. Second, we run samtools which will parse the BAM files and generate a count of reads from each window. Obviously, you'll need both of these things installed, and you need a samtools version of at least 1.20.
+
+```{r}
+#system("bedtools makewindows -g input/Baxijiao.chr1.fa.fai -w 10000 > tmp/windows.bed")
+#system("samtools bedcov -Hjc tmp/windows.bed tmp/bam/*.bam >tmp/window_depths.tsv")
+#
+# For this demo, we don't actually run that, and instead used a precomputed version at input/window_depths.tsv. If you have the
+# required software installed, you can of course uncomment the above and actually run it youself.
+```
+
+We then need to instruct cnvseqTV which comparisons to make, and which sample in each comparison is the control sample.
+
+```{r}
+comparisons = tibble::tribble(
+    ~comparison, ~sample, ~testctrl,
+    "deleted_vs_control",  "deleted", "test",
+    "deleted_vs_control",  "control", "control",
+)
+```
+
+Now, we read in the samtools results file, which contains bed-like columns describing each window, and then columns for each sample with the total coverage and read counts.
+
+```{r}
+rawtbl = read_tsv("input/window_depths.tsv") %>%
+    dplyr::glimpse()
+```
+
+This is the main function, in which each comparison in the comparisons table is run on each genome window. The result has one line per window and comparison, and no filtering happens here, so the result is across the whole genome.
+
+```{r}
+wg = calculate_cnvs(rawtbl, comparisons)
+```
+
+```{r}
+head(wg)
+```
+
+```{r}
+hit = cnv_rois(wg)
+```
+
+```{r}
+hit
+```
+
+# Plotting
+
+Now, we want to plot our results. To start with, we plot the whole genome. In our little test, we use only one comparison on chromosome one. In full datasets this plot will be a matrix of plots, where the multiple samples to be compared will form rows and the multiple chromosomes will form the columns. Note that in all cases, a ggplot object is returned, and further customisation and labelling is possible. Of course, you can also make custom plots of your own, based on the above two tables (`wg` and `hit` in this notebook).
+
+```{r}
+cnv_plot(wg, hit)
+```
+
+And now, we zoom in on each of our three regions of interest. Again, these would form
+
+```{r}
+cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=0.5e6, zoom_end=2.5e6) + ggplot2::ylim(-10, 10)
+```
+
+```{r}
+cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=3e6, zoom_end=4e6) + ggplot2::ylim(-10, 10)
+
+```
+
+```{r}
+cnv_plot(wg, hit, zoom_chrom="chr01", zoom_end=0.5e6) + ggplot2::ylim(-10, 10)
+```

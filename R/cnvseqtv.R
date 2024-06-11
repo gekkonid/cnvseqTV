@@ -1,4 +1,3 @@
-
 #' Convert NAs to 0
 #' @param x  numeric vector
 #' @return A numeric vector with NA/infinite values replaced with 0
@@ -26,16 +25,25 @@ overlap_groups = function(starts, ends) {
 
 #' Calculate CNVs
 #' @param count_table  A table of windowed counts read directly from the output of samtools depth. See worked example.
+#' @param comparisons   A table of comparisons, must have columns
+#'                      `"comparison", "sample", "ctrltest"`. Comparison is a
+#'                      name for this comparison, sample is which sample name
+#'                      (must match bam name in `count_table`), and ctrltest is
+#'                      a string either `"control"` or `"test"`, denoting if
+#'                      this row describes a test or control sample. Therefore,
+#'                      there should be two rows for each comparison, one for
+#'                      the test and one for the control.
 #' @export
 #' @return A table of windows in which the coverage between the control and test sample(s) are compared.
-calculate_cnvs = function(count_table) {
+calculate_cnvs = function(count_table, comparisons) {
     count_table %>%
-        dplyr::select(c(chrom, start, end, dplyr::ends_with("_reads"))) %>%
-        tidyr::pivot_longer(-c(chrom, start, end), names_to = "sample", names_transform = function(x) sub(".*/([^.]+).bam_reads", "\\1", x, perl=T), values_to = "nreads") %>%
+	dplyr::rename(chrom=`#chrom`) %>%
+        dplyr::select(c(chrom, start, end, dplyr::ends_with("_count"))) %>%
+        tidyr::pivot_longer(-c(chrom, start, end), names_to = "sample", names_transform = function(x) sub(".*/([^.]+).bam_count", "\\1", x, perl=T), values_to = "nreads") %>%
         dplyr::group_by(sample) %>%
-        dplyr::mutate(rpm = nreads/sum(nreads)*1e6, meanreads=mean(nreads)) %>%
+        dplyr::mutate(nreads=nreads+1, rpm = nreads/sum(nreads)*1e6, meanreads=mean(nreads)) %>%
         dplyr::ungroup() %>%
-        dplyr::left_join(comparisons, by="sample", relationship = "many-to-many") %>%
+        dplyr::inner_join(comparisons, by="sample", relationship = "many-to-many") %>%
         tidyr::pivot_longer(c(nreads, rpm, meanreads), names_to = "variable", values_to = "value") %>%
         dplyr::select(-sample) %>%
         tidyr::pivot_wider(names_from=c("testctrl", "variable"), values_from="value") %>%
@@ -90,10 +98,10 @@ cnv_plot = function(cnv_table, hits, log2fc_thresh=1.5, pval_thresh=1e-12, zoom_
     }
 
     ggplot2::ggplot(pdat, ggplot2::aes(x=start, y=log2_fc_norm)) +
-        ggplot2::geom_point(aes(alpha=abs(log2_fc_norm)>log2fc_thresh & pvalue < pval_thresh, colour=log10(pvalue))) +
+        ggplot2::geom_point(ggplot2::aes(alpha=abs(log2_fc_norm)>log2fc_thresh & pvalue < pval_thresh, colour=log10(pvalue))) +
         ggplot2::geom_segment(ggplot2::aes(x=start, xend=end, y=0, yend=0), colour="red", data=hits) +
         ggplot2::scale_color_viridis_c() +
         ggplot2::facet_grid(comparison~chrom, space = "free_x", scales="free_x") +
-        ggplot2::ylim(c(-3, 3)) +
+	ggplot2::labs(alpha="hit") +
         ggplot2::theme_classic()
 }
