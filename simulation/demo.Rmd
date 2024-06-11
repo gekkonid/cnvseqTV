@@ -26,12 +26,23 @@ source("../R/cnvseqtv.R")
 
 In this demo, we make a few deletions in chr1 of the banana genome, and then generate reads and bams from these, mapped back to the original banana genome.
 
+The following changes are the ground-truth:
+
+| chrom |  start   |  end     |  type       |
+| ----- | -------- | -------- | ----------- |
+| chr01 |  31000   |  32000   |  deleted    |
+| chr01 |  310000  |  320000  |  deleted    |
+| chr01 |  3100000 |  3200000 |  deleted    |
+| chr01 |  1000000 |  2000000 |  deleted    |
+| chr01 |  4000000 |  5000000 |  duplicated |
+
+
 
 First, we need to run two commands. First, we use bedtools to generate a list of genome windows that should be analysed. Second, we run samtools which will parse the BAM files and generate a count of reads from each window. Obviously, you'll need both of these things installed, and you need a samtools version of at least 1.20.
 
 ```{r}
-#system("bedtools makewindows -g input/Baxijiao.chr1.fa.fai -w 10000 > tmp/windows.bed")
-#system("samtools bedcov -Hjc tmp/windows.bed tmp/bam/*.bam >tmp/window_depths.tsv")
+system("bedtools makewindows -g input/Baxijiao.chr1.fa.gz.fai -w 10000 > tmp/windows.bed")
+system("samtools bedcov -Hjc tmp/windows.bed tmp/bam/*.bam >tmp/window_depths.tsv")
 #
 # For this demo, we don't actually run that, and instead used a precomputed version at input/window_depths.tsv. If you have the
 # required software installed, you can of course uncomment the above and actually run it youself.
@@ -44,13 +55,15 @@ comparisons = tibble::tribble(
     ~comparison, ~sample, ~testctrl,
     "deleted_vs_control",  "deleted", "test",
     "deleted_vs_control",  "control", "control",
+    "duplicated_vs_control",  "duplicated", "test",
+    "duplicated_vs_control",  "control", "control",
 )
 ```
 
 Now, we read in the samtools results file, which contains bed-like columns describing each window, and then columns for each sample with the total coverage and read counts.
 
 ```{r}
-rawtbl = read_tsv("input/window_depths.tsv") %>%
+rawtbl = read_tsv("tmp/window_depths.tsv") %>%
     dplyr::glimpse()
 ```
 
@@ -65,12 +78,25 @@ head(wg)
 ```
 
 ```{r}
-hit = cnv_rois(wg)
+hit = cnv_rois(wg, log2fc_thresh = 0.6)
 ```
+
+To remind you: the following changes are the ground-truth:
+
+| chrom |  start   |  end     |  type       |
+| ----- | -------- | -------- | ----------- |
+| chr01 |  31000   |  32000   |  deleted    |
+| chr01 |  310000  |  320000  |  deleted    |
+| chr01 |  3100000 |  3200000 |  deleted    |
+| chr01 |  1000000 |  2000000 |  deleted    |
+| chr01 |  4000000 |  5000000 |  duplicated |
 
 ```{r}
 hit
 ```
+
+In other words, we miss a 1kb deletion, which is not surprising given we use 10kb windows but perfectly recover other variants.
+
 
 # Plotting
 
@@ -83,7 +109,11 @@ cnv_plot(wg, hit)
 And now, we zoom in on each of our three regions of interest. Again, these would form
 
 ```{r}
-cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=0.5e6, zoom_end=2.5e6) + ggplot2::ylim(-10, 10)
+cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=0.5e6, zoom_end=2.5e6, log2fc_thresh = 0.6) + ggplot2::ylim(-10, 10)
+```
+
+```{r}
+cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=3.5e6, zoom_end=5.5e6, log2fc_thresh = 0.6) 
 ```
 
 ```{r}

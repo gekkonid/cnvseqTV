@@ -1,10 +1,11 @@
 from Bio import SeqIO, Seq
+import gzip
 
-config["nreads"] = 2e6
+config["nreads"] = 1e6
 config["refs"] = {
     "control": "input/Baxijiao.chr1.fa.gz",
     "deleted": "tmp/ref_deleted.fa",
-    "inverted": "tmp/ref_inverted.fa",
+    "duplicated": "tmp/ref_duplicated.fa",
 }
 
 deletions= [
@@ -12,6 +13,10 @@ deletions= [
     ("chr01", 310000, 320000),
     ("chr01", 3100000, 3200000),
     ("chr01", 1000000, 2000000),
+]
+
+duplications = [
+    ("chr01", 4000000, 5000000),
 ]
 
 inversions = [
@@ -28,6 +33,11 @@ def inversion(ref, ranges):
         ref[chrom] = ref[chrom][:start] + Seq.reverse_complement(ref[chrom][start:end]) + ref[chrom][end:]
     return sorted(ref.items())
 
+def duplicate(ref, ranges):
+    for chrom, start, end in reversed(sorted(ranges)):
+        ref[chrom] = ref[chrom][:start] + ref[chrom][start:end]  + ref[chrom][end:] + ref[chrom][start:end] 
+    return sorted(ref.items())
+
 
 rule all:
     input:
@@ -40,23 +50,36 @@ rule deletedref:
     output:
         config["refs"]["deleted"],
     run:
-        ref = {s.name: s.seq for s in SeqIO.parse(input[0], "fasta")}
+        ref = {s.name: s.seq for s in SeqIO.parse(gzip.open(input[0], "rt"), "fasta")}
         with open(output[0], "w") as fh:
             for ctg, seq in delete(ref, deletions):
                 print(f">{ctg}", file=fh)
                 print(str(seq), file=fh)
 
-rule invertedref:
+#rule invertedref:
+#    input:
+#        config["refs"]["control"],
+#    output:
+#        config["refs"]["inverted"],
+#    run:
+#        ref = {s.name: s.seq for s in SeqIO.parse(gzip.open(input[0], "rt"), "fasta")}
+#        with open(output[0], "w") as fh:
+#            for ctg, seq in inversion(ref, deletions):
+#                print(f">{ctg}", file=fh)
+#                print(str(seq), file=fh)
+
+rule duplref:
     input:
         config["refs"]["control"],
     output:
-        config["refs"]["inverted"],
+        config["refs"]["duplicated"],
     run:
-        ref = {s.name: s.seq for s in SeqIO.parse(input[0], "fasta")}
+        ref = {s.name: s.seq for s in SeqIO.parse(gzip.open(input[0], "rt"), "fasta")}
         with open(output[0], "w") as fh:
-            for ctg, seq in inversion(ref, deletions):
+            for ctg, seq in duplicate(ref, duplications):
                 print(f">{ctg}", file=fh)
                 print(str(seq), file=fh)
+
 
 rule reads:
     input:
