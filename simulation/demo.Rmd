@@ -24,7 +24,7 @@ source("../R/cnvseqtv.R")
 
 # CNVseq-TV Demo
 
-In this demo, we make a few deletions in chr1 of the banana genome, and then generate reads and bams from these, mapped back to the original banana genome.
+In this demo, we make a few deletions and a dupication in chr1 of the banana genome, and then generate reads and bams from these, mapped back to the original banana genome.
 
 The following changes are the ground-truth:
 
@@ -103,24 +103,27 @@ In other words, we miss a 1kb deletion, which is not surprising given we use 10k
 Now, we want to plot our results. To start with, we plot the whole genome. In our little test, we use only one comparison on chromosome one. In full datasets this plot will be a matrix of plots, where the multiple samples to be compared will form rows and the multiple chromosomes will form the columns. Note that in all cases, a ggplot object is returned, and further customisation and labelling is possible. Of course, you can also make custom plots of your own, based on the above two tables (`wg` and `hit` in this notebook).
 
 ```{r}
-cnv_plot(wg, hit)
+cnv_plot(wg, hit) + ggplot2::scale_alpha_manual(values=c(0.6, 1))
 ```
 
 And now, we zoom in on each of our three regions of interest. Again, these would form
 
 ```{r}
-cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=0.5e6, zoom_end=2.5e6, log2fc_thresh = 0.6) + ggplot2::ylim(-10, 10)
+cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=0.5e6, zoom_end=2.5e6, log2fc_thresh = 0.6) + ggplot2::ylim(-10, 10) + ggplot2::scale_alpha_manual(values=c(0.6, 1))
 ```
 
 ```{r}
-cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=3.5e6, zoom_end=5.5e6, log2fc_thresh = 0.6) 
+cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=3.5e6, zoom_end=5.5e6, log2fc_thresh = 0.6)  + ggplot2::scale_alpha_manual(values=c(0.6, 1))
 ```
 
 ```{r}
-cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=3e6, zoom_end=4e6) + ggplot2::ylim(-10, 10)
-
+cnv_plot(wg, hit, zoom_chrom="chr01", zoom_start=3e6, zoom_end=4e6) + ggplot2::ylim(-10, 10) + ggplot2::scale_alpha_manual(values=c(0.6, 1))
 ```
 
 ```{r}
-cnv_plot(wg, hit, zoom_chrom="chr01", zoom_end=0.5e6) + ggplot2::ylim(-10, 10)
+cnv_plot(wg, hit, zoom_chrom="chr01", zoom_end=0.5e6) + ggplot2::ylim(-10, 10) + ggplot2::scale_alpha_manual(values=c(0.6, 1))
+```
+
+```{r}
+
 ```
