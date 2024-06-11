@@ -2,7 +2,7 @@ from Bio import SeqIO, Seq
 
 config["nreads"] = 2e6
 config["refs"] = {
-    "control": "input/Baxijiao.chr1.fa",
+    "control": "input/Baxijiao.chr1.fa.gz",
     "deleted": "tmp/ref_deleted.fa",
     "inverted": "tmp/ref_inverted.fa",
 }
