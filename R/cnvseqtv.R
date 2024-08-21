@@ -39,7 +39,8 @@ calculate_cnvs = function(count_table, comparisons) {
     count_table %>%
 	dplyr::rename(chrom=`#chrom`) %>%
         dplyr::select(c(chrom, start, end, dplyr::ends_with("_count"))) %>%
-        tidyr::pivot_longer(-c(chrom, start, end), names_to = "sample", names_transform = function(x) sub(".*/([^.]+).bam_count", "\\1", x, perl=T), values_to = "nreads") %>%
+        tidyr::pivot_longer(-c(chrom, start, end), names_to = "sample",
+                            names_transform = function(x) sub(".*/([^.]+).bam_count", "\\1", x, perl=T), values_to = "nreads") %>%
         dplyr::group_by(sample) %>%
         dplyr::mutate(nreads=nreads+1, rpm = nreads/sum(nreads)*1e6, meanreads=mean(nreads)) %>%
         dplyr::ungroup() %>%
@@ -47,7 +48,6 @@ calculate_cnvs = function(count_table, comparisons) {
         tidyr::pivot_longer(c(nreads, rpm, meanreads), names_to = "variable", values_to = "value") %>%
         dplyr::select(-sample) %>%
         tidyr::pivot_wider(names_from=c("testctrl", "variable"), values_from="value") %>%
-        dplyr::filter(control_nreads >50)  %>%
         dplyr::group_by(comparison) %>%
         dplyr::mutate(
             log2_fc=na0(log2(test_rpm/control_rpm)),
